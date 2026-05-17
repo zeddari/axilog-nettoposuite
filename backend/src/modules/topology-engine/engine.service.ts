@@ -41,9 +41,10 @@ export async function buildGraph(topologyId: string): Promise<TopologyGraph | nu
     ipAddress:  n.ip_address ?? undefined,
     vendor:     n.vendor     ?? undefined,
     model:      n.model      ?? undefined,
-    properties: parseJsonField(n.properties),
-    posX:       n.pos_x      ?? undefined,
-    posY:       n.pos_y      ?? undefined,
+    properties:  parseJsonField(n.properties),
+    posX:        n.pos_x       ?? undefined,
+    posY:        n.pos_y       ?? undefined,
+    customIcon:  n.custom_icon ?? undefined,
   }));
 
   const links = rawLinks.map(l => ({

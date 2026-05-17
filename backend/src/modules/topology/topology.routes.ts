@@ -83,6 +83,19 @@ export default async function topologyRoutes(fastify: FastifyInstance) {
     return reply.send(updated);
   });
 
+  // ── PUT /api/v1/topology/nodes/:id/icon ─────────────────────────────────────
+  fastify.put('/api/v1/topology/nodes/:id/icon', { preHandler: fastify.requireRole('admin', 'operator') }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { iconKey } = req.body as { iconKey: string | null };
+
+    await db.updateTable('topology_nodes')
+      .set({ custom_icon: iconKey ?? null, updated_at: new Date() })
+      .where('id', '=', id)
+      .execute();
+
+    return reply.send({ ok: true, nodeId: id, iconKey });
+  });
+
   // ── DELETE /api/v1/topology/nodes/:id ───────────────────────────────────────
   fastify.delete('/api/v1/topology/nodes/:id', { preHandler: fastify.requireRole('admin') }, async (req, reply) => {
     const { id } = req.params as { id: string };

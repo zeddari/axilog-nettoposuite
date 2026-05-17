@@ -1,6 +1,7 @@
 import { type NodeProps, Handle, Position } from 'reactflow';
+import { BUILTIN_ICON_MAP } from '../icons/builtinIcons';
 
-const STATUS_COLOR: Record<string, string> = {
+export const STATUS_COLOR: Record<string, string> = {
   UP:          '#22c55e',
   DOWN:        '#ef4444',
   DEGRADED:    '#f59e0b',
@@ -16,14 +17,49 @@ const STATUS_BG: Record<string, string> = {
   UNKNOWN:     'rgba(107,114,128,0.12)',
 };
 
-interface NodeData {
-  label: string;
-  status?: string;
-  ipAddress?: string;
-  vendor?: string;
-  type?: string;
-  utilizationPct?: number;
-  onClick?: (data: NodeData) => void;
+export interface NodeData {
+  label:       string;
+  status?:     string;
+  ipAddress?:  string;
+  vendor?:     string;
+  type?:       string;
+  properties?: Record<string, unknown>;
+  customIcon?: string;
+  onClick?:    (data: NodeData) => void;
+}
+
+// ── Custom icon renderer ───────────────────────────────────────────────────────
+function NodeIcon({ customIcon, fallbackSvg, size = 28 }: {
+  customIcon?: string;
+  fallbackSvg: React.ReactNode;
+  size?: number;
+}) {
+  if (!customIcon) return <>{fallbackSvg}</>;
+
+  // Check built-in icon library first
+  const builtin = BUILTIN_ICON_MAP[customIcon];
+  if (builtin) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        style={{ color: 'white', display: 'block' }}
+        dangerouslySetInnerHTML={{ __html: builtin.svg }}
+      />
+    );
+  }
+
+  // Otherwise treat as uploaded file UUID
+  return (
+    <img
+      src={`/api/v1/icons/file/${customIcon}`}
+      alt="node icon"
+      width={size}
+      height={size}
+      style={{ objectFit: 'contain' }}
+    />
+  );
 }
 
 // ── Base node shell ────────────────────────────────────────────────────────────
@@ -40,11 +76,19 @@ function BaseNode({ data, icon, shape = 'rounded' }: {
     ? 'rounded-full w-16 h-16'
     : shape === 'diamond'
     ? 'rotate-45 rounded-lg w-14 h-14'
-    : 'rounded-xl w-20 h-auto min-h-[72px]';
+    : 'rounded-xl w-20 min-h-[72px]';
+
+  const resolvedIcon = (
+    <NodeIcon
+      customIcon={data.customIcon}
+      fallbackSvg={icon}
+      size={28}
+    />
+  );
 
   return (
     <div
-      className={`relative flex flex-col items-center cursor-pointer select-none`}
+      className="relative flex flex-col items-center cursor-pointer select-none"
       onClick={() => data.onClick?.(data)}
     >
       <Handle type="target" position={Position.Top}    style={{ opacity: 0, top: -4 }} />
@@ -60,20 +104,19 @@ function BaseNode({ data, icon, shape = 'rounded' }: {
       >
         {shape === 'diamond' ? (
           <div className="-rotate-45 flex flex-col items-center">
-            {icon}
+            {resolvedIcon}
           </div>
         ) : (
-          icon
-        )}
-
-        {shape !== 'diamond' && (
-          <span className="text-[10px] font-bold text-white/90 text-center leading-tight px-1 truncate max-w-[72px]">
-            {data.label}
-          </span>
+          <>
+            {resolvedIcon}
+            <span className="text-[10px] font-bold text-white/90 text-center leading-tight px-1 truncate max-w-[72px]">
+              {data.label}
+            </span>
+          </>
         )}
       </div>
 
-      {/* Label below (for diamond) */}
+      {/* Label below for diamond shape */}
       {shape === 'diamond' && (
         <span className="mt-1 text-[10px] font-bold text-white/90 text-center leading-tight max-w-[80px] truncate">
           {data.label}
@@ -95,90 +138,80 @@ function BaseNode({ data, icon, shape = 'rounded' }: {
   );
 }
 
-// ── Router ─────────────────────────────────────────────────────────────────────
+// ── Default SVG icons ──────────────────────────────────────────────────────────
+const RouterSvg = (
+  <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
+    <rect x="2" y="8" width="20" height="8" rx="2"/>
+    <circle cx="7" cy="12" r="1.5" className="fill-white"/>
+    <circle cx="12" cy="12" r="1.5" className="fill-white"/>
+    <circle cx="17" cy="12" r="1.5" className="fill-white"/>
+    <line x1="7" y1="8" x2="7" y2="5"/>
+    <line x1="12" y1="8" x2="12" y2="5"/>
+    <line x1="17" y1="8" x2="17" y2="5"/>
+  </svg>
+);
+
+const SwitchSvg = (
+  <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
+    <rect x="2" y="9" width="20" height="6" rx="1"/>
+    <line x1="5" y1="9" x2="5" y2="5"/>
+    <line x1="9" y1="9" x2="9" y2="5"/>
+    <line x1="13" y1="9" x2="13" y2="5"/>
+    <line x1="17" y1="9" x2="17" y2="5"/>
+    <line x1="19" y1="15" x2="19" y2="19"/>
+    <polygon points="17,19 19,21 21,19" className="fill-white"/>
+  </svg>
+);
+
+const CoreNfSvg = (nfType?: string) => (
+  <div className="flex flex-col items-center justify-center">
+    <span className="text-[11px] font-black text-white tracking-tight">{nfType ?? 'NF'}</span>
+    <svg viewBox="0 0 16 16" className="w-4 h-4 mt-0.5">
+      <polygon points="8,1 15,5 15,11 8,15 1,11 1,5" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
+    </svg>
+  </div>
+);
+
+const GnbSvg = (
+  <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
+    <line x1="12" y1="20" x2="12" y2="8"/>
+    <line x1="8" y1="20" x2="16" y2="20"/>
+    <path d="M8 14 Q12 10 16 14" strokeLinecap="round"/>
+    <path d="M6 17 Q12 11 18 17" strokeLinecap="round"/>
+    <circle cx="12" cy="7" r="1.5" className="fill-white"/>
+  </svg>
+);
+
+const DatacenterSvg = (
+  <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
+    <rect x="2" y="4"  width="20" height="4" rx="1"/>
+    <rect x="2" y="10" width="20" height="4" rx="1"/>
+    <rect x="2" y="16" width="20" height="4" rx="1"/>
+    <circle cx="18" cy="6"  r="1" className="fill-white"/>
+    <circle cx="18" cy="12" r="1" className="fill-white"/>
+    <circle cx="18" cy="18" r="1" className="fill-white"/>
+  </svg>
+);
+
+// ── Public node components ─────────────────────────────────────────────────────
 export function RouterNode({ data }: NodeProps<NodeData>) {
-  return (
-    <BaseNode data={data} icon={
-      <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
-        <rect x="2" y="8" width="20" height="8" rx="2"/>
-        <circle cx="7" cy="12" r="1.5" className="fill-white"/>
-        <circle cx="12" cy="12" r="1.5" className="fill-white"/>
-        <circle cx="17" cy="12" r="1.5" className="fill-white"/>
-        <line x1="7" y1="8" x2="7" y2="5"/>
-        <line x1="12" y1="8" x2="12" y2="5"/>
-        <line x1="17" y1="8" x2="17" y2="5"/>
-      </svg>
-    } />
-  );
+  return <BaseNode data={data} icon={RouterSvg} />;
 }
 
-// ── Switch ─────────────────────────────────────────────────────────────────────
 export function SwitchNode({ data }: NodeProps<NodeData>) {
-  return (
-    <BaseNode data={data} icon={
-      <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
-        <rect x="2" y="9" width="20" height="6" rx="1"/>
-        <line x1="5" y1="12" x2="5" y2="7"/>
-        <line x1="9" y1="12" x2="9" y2="7"/>
-        <line x1="13" y1="12" x2="13" y2="7"/>
-        <line x1="17" y1="12" x2="17" y2="7"/>
-        <line x1="19" y1="12" x2="19" y2="17"/>
-        <polygon points="5,5 3,7 7,7" className="fill-white"/>
-        <polygon points="9,5 7,7 11,7" className="fill-white"/>
-        <polygon points="13,7 11,5 15,5" className="fill-white stroke-none"/>
-        <polygon points="19,19 17,17 21,17" className="fill-white stroke-none"/>
-      </svg>
-    } />
-  );
+  return <BaseNode data={data} icon={SwitchSvg} />;
 }
 
-// ── 5G Core NF ────────────────────────────────────────────────────────────────
 export function CoreNfNode({ data }: NodeProps<NodeData>) {
-  const nfType = (data as NodeData & { nfType?: string }).nfType
-    ?? data.label.split('-')[0];
-  return (
-    <BaseNode data={data} shape="circle" icon={
-      <div className="flex flex-col items-center justify-center">
-        <span className="text-[11px] font-black text-white tracking-tight">{nfType}</span>
-        <svg viewBox="0 0 16 16" className="w-4 h-4 mt-0.5">
-          <polygon points="8,1 15,5 15,11 8,15 1,11 1,5" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
-        </svg>
-      </div>
-    } />
-  );
+  const props = data.properties as Record<string, unknown> | undefined;
+  const nfType = (props?.nfType as string) ?? data.label?.split('-')[0];
+  return <BaseNode data={data} icon={CoreNfSvg(nfType)} shape="circle" />;
 }
 
-// ── gNB (base station) ────────────────────────────────────────────────────────
 export function GnbNode({ data }: NodeProps<NodeData>) {
-  return (
-    <BaseNode data={data} icon={
-      <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
-        {/* Tower */}
-        <line x1="12" y1="20" x2="12" y2="8"/>
-        <line x1="8" y1="20" x2="16" y2="20"/>
-        {/* Antenna arcs */}
-        <path d="M8 14 Q12 10 16 14" strokeLinecap="round"/>
-        <path d="M6 17 Q12 11 18 17" strokeLinecap="round"/>
-        {/* Signal dot */}
-        <circle cx="12" cy="7" r="1.5" className="fill-white"/>
-      </svg>
-    } />
-  );
+  return <BaseNode data={data} icon={GnbSvg} />;
 }
 
-// ── Datacenter / Cloud ────────────────────────────────────────────────────────
 export function DatacenterNode({ data }: NodeProps<NodeData>) {
-  return (
-    <BaseNode data={data} icon={
-      <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[1.5]">
-        <rect x="2" y="4"  width="20" height="4" rx="1"/>
-        <rect x="2" y="10" width="20" height="4" rx="1"/>
-        <rect x="2" y="16" width="20" height="4" rx="1"/>
-        <circle cx="18" cy="6"  r="1" className="fill-white"/>
-        <circle cx="18" cy="12" r="1" className="fill-white"/>
-        <circle cx="18" cy="18" r="1" className="fill-white"/>
-      </svg>
-    } />
-  );
+  return <BaseNode data={data} icon={DatacenterSvg} />;
 }
-

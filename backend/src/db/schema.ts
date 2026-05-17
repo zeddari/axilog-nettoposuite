@@ -53,6 +53,7 @@ export interface TopologyNodesTable {
   pos_x:       number | null;
   pos_y:       number | null;
   layer:       string | null;
+  custom_icon: string | null;
   discovered_at: Date | null;
   updated_at:  Generated<Date>;
 }
@@ -137,6 +138,18 @@ export interface ServiceFlowsTable {
   updated_at:   Generated<Date>;
 }
 
+// ─── Node Icons ───────────────────────────────────────────────────────────────
+export interface NodeIconsTable {
+  id:          string;
+  name:        string;
+  category:    Generated<string>;
+  icon_key:    string | null;
+  file_path:   string | null;
+  mime_type:   Generated<string>;
+  uploaded_by: string | null;
+  created_at:  Generated<Date>;
+}
+
 // ─── Database Interface ───────────────────────────────────────────────────────
 export interface Database {
   users:                UsersTable;
@@ -147,4 +160,5 @@ export interface Database {
   discovery_targets:    DiscoveryTargetsTable;
   catalogue_services:   CatalogueServicesTable;
   service_flows:        ServiceFlowsTable;
+  node_icons:           NodeIconsTable;
 }

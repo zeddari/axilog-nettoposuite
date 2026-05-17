@@ -3,6 +3,7 @@ import { http } from './http';
 export interface TopologyDefinition {
   id: string; name: string; type: string; description?: string;
   autoRefreshSeconds: number; isActive: boolean;
+  layoutAlgorithm?: string;
 }
 
 export interface TopologyGraph {
@@ -14,6 +15,8 @@ export interface TopologyNode {
   id: string; label: string; type: string; status: string;
   ipAddress?: string; vendor?: string; model?: string;
   posX?: number; posY?: number; properties: Record<string, unknown>;
+  /** Built-in icon key (e.g. 'router') or uploaded icon UUID */
+  customIcon?: string;
 }
 
 export interface TopologyLink {

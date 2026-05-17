@@ -9,26 +9,29 @@ import ReactFlow, {
   BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import type { TopologyGraph, TopologyNode, TopologyLink } from '@/api/topology.api';
 import { NODE_TYPES_MAP } from './nodes/nodeRegistry';
 import { EDGE_TYPES } from './edges/TrafficEdge';
 import { NodeDetailPanel } from './NodeDetailPanel';
+import { applyElkLayout } from './layout/elkLayout';
+import { LayoutGrid, ZapOff, Zap } from 'lucide-react';
 
 // ── Node builder ──────────────────────────────────────────────────────────────
-function toRfNode(n: TopologyNode, onNodeClick: (data: TopologyNode) => void): Node {
+function toRfNode(n: TopologyNode, onNodeClick: (node: TopologyNode) => void): Node {
   return {
     id:       n.id,
     type:     n.type in NODE_TYPES_MAP ? n.type : 'ROUTER',
-    position: { x: n.posX ?? Math.random() * 700, y: n.posY ?? Math.random() * 450 },
+    position: { x: n.posX ?? 0, y: n.posY ?? 0 },
     data: {
-      label:          n.label,
-      status:         n.status,
-      ipAddress:      n.ipAddress,
-      vendor:         n.vendor,
-      type:           n.type,
-      properties:     n.properties,
-      onClick:        () => onNodeClick(n),
+      label:      n.label,
+      status:     n.status,
+      ipAddress:  n.ipAddress,
+      vendor:     n.vendor,
+      type:       n.type,
+      properties: n.properties,
+      customIcon: n.customIcon,
+      onClick:    () => onNodeClick(n),
     },
   };
 }
@@ -48,33 +51,74 @@ function toRfEdge(l: TopologyLink): Edge {
   };
 }
 
-// Stable reference — built once outside the component to avoid React Flow re-render loops
+// Stable reference for React Flow nodeTypes prop
 const NODE_TYPE_MAP = { ...NODE_TYPES_MAP };
 
-interface Props { graph: TopologyGraph }
+interface Props {
+  graph:           TopologyGraph;
+  layoutAlgorithm?: string;
+}
 
-export function UniversalTopologyCanvas({ graph }: Props) {
+export function UniversalTopologyCanvas({ graph, layoutAlgorithm = 'ELK_LAYERED' }: Props) {
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
+  const [autoRefresh,  setAutoRefresh]  = useState(true);
+  const [isLaying,     setIsLaying]     = useState(false);
+  const rfInstance = useRef<{ fitView: () => void } | null>(null);
 
   const handleNodeClick = useCallback((node: TopologyNode) => {
     setSelectedNode(prev => prev?.id === node.id ? null : node);
   }, []);
 
-  const initialNodes = useMemo(
-    () => graph.nodes.map(n => toRfNode(n, handleNodeClick)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [graph]
+  // Build initial RF nodes/edges from the graph prop
+  const [nodes, setNodes, onNodesChange] = useNodesState(
+    useMemo(() => graph.nodes.map(n => toRfNode(n, handleNodeClick)), [graph, handleNodeClick])
   );
-  const initialEdges = useMemo(() => graph.links.map(toRfEdge), [graph]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(
+    useMemo(() => graph.links.map(toRfEdge), [graph])
+  );
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
+  // Sync when graph data changes (auto-refresh push)
   useEffect(() => {
-    setNodes(graph.nodes.map(n => toRfNode(n, handleNodeClick)));
-    setEdges(graph.links.map(toRfEdge));
+    const rfNodes = graph.nodes.map(n => toRfNode(n, handleNodeClick));
+    const rfEdges = graph.links.map(toRfEdge);
+    setNodes(rfNodes);
+    setEdges(rfEdges);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph]);
+
+  // ── ELK auto-layout ─────────────────────────────────────────────────────────
+  const runLayout = useCallback(async () => {
+    setIsLaying(true);
+    try {
+      const laid = await applyElkLayout(nodes, edges, layoutAlgorithm);
+      setNodes(laid);
+      // Give React Flow a tick to render before fitting
+      setTimeout(() => rfInstance.current?.fitView(), 50);
+    } finally {
+      setIsLaying(false);
+    }
+  }, [nodes, edges, layoutAlgorithm, setNodes]);
+
+  // Run ELK once on first mount / topology change
+  const layoutRan = useRef(false);
+  useEffect(() => {
+    layoutRan.current = false;
+  }, [graph.topologyId]);
+
+  useEffect(() => {
+    if (!layoutRan.current && nodes.length > 0) {
+      layoutRan.current = true;
+      void runLayout();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes.length, graph.topologyId]);
+
+  // Handle icon change from the detail panel (update node data in place)
+  const handleIconChanged = useCallback((nodeId: string, iconKey: string) => {
+    setNodes(ns => ns.map(n =>
+      n.id === nodeId ? { ...n, data: { ...n.data, customIcon: iconKey } } : n
+    ));
+  }, [setNodes]);
 
   return (
     <div className="topology-canvas-wrapper relative w-full h-full" style={{ minHeight: 480 }}>
@@ -90,13 +134,9 @@ export function UniversalTopologyCanvas({ graph }: Props) {
         attributionPosition="bottom-right"
         proOptions={{ hideAttribution: true }}
         onPaneClick={() => setSelectedNode(null)}
+        onInit={inst => { rfInstance.current = inst as never; }}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          color="#1e2533"
-          gap={24}
-          size={1}
-        />
+        <Background variant={BackgroundVariant.Dots} color="#1e2533" gap={24} size={1} />
         <Controls className="react-flow__controls" />
         <MiniMap
           nodeColor={() => '#334155'}
@@ -107,11 +147,47 @@ export function UniversalTopologyCanvas({ graph }: Props) {
         />
       </ReactFlow>
 
+      {/* Canvas toolbar (top-left overlay) */}
+      <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
+        {/* Re-layout button */}
+        <button
+          onClick={runLayout}
+          disabled={isLaying}
+          title="Re-run auto-layout"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold
+                     bg-[#21262d] border border-[#30363d] text-[#8b949e]
+                     hover:bg-[#30363d] hover:text-[#e6edf3] transition-colors
+                     disabled:opacity-40 disabled:cursor-wait"
+        >
+          {isLaying
+            ? <div className="w-3.5 h-3.5 border border-axilog-primary border-t-transparent rounded-full animate-spin" />
+            : <LayoutGrid className="w-3.5 h-3.5" />
+          }
+          {isLaying ? 'Laying out…' : 'Auto-layout'}
+        </button>
+
+        {/* Traffic animation toggle */}
+        <button
+          onClick={() => setAutoRefresh(v => !v)}
+          title={autoRefresh ? 'Pause traffic animation' : 'Resume traffic animation'}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold
+                      border transition-colors ${
+                        autoRefresh
+                          ? 'bg-axilog-secondary/20 border-axilog-secondary/50 text-axilog-secondary'
+                          : 'bg-[#21262d] border-[#30363d] text-[#8b949e] hover:bg-[#30363d] hover:text-[#e6edf3]'
+                      }`}
+        >
+          {autoRefresh ? <Zap className="w-3.5 h-3.5" /> : <ZapOff className="w-3.5 h-3.5" />}
+          {autoRefresh ? 'Live' : 'Paused'}
+        </button>
+      </div>
+
       {/* Node detail side panel */}
       {selectedNode && (
         <NodeDetailPanel
           node={selectedNode}
           onClose={() => setSelectedNode(null)}
+          onIconChanged={handleIconChanged}
         />
       )}
     </div>

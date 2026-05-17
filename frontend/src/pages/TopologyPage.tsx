@@ -112,7 +112,10 @@ export function TopologyPage() {
         </div>
       ) : graph ? (
         <div className="flex-1 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-dark-border">
-          <UniversalTopologyCanvas graph={graph} />
+          <UniversalTopologyCanvas
+            graph={graph}
+            layoutAlgorithm={currentDef?.layoutAlgorithm ?? 'ELK_LAYERED'}
+          />
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center
