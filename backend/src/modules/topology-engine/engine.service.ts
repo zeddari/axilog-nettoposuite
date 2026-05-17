@@ -23,8 +23,13 @@ export async function buildGraph(topologyId: string): Promise<TopologyGraph | nu
     db.selectFrom('topology_links').selectAll().where('topology_id', '=', topologyId).execute(),
   ]);
 
-  const nodeMapping = JSON.parse(definition.node_mapping) as Record<string, unknown>;
-  const edgeMapping = JSON.parse(definition.edge_mapping) as Record<string, unknown>;
+  const parseJsonField = (val: unknown): Record<string, unknown> => {
+    if (!val) return {};
+    if (typeof val === 'string') return JSON.parse(val);
+    return val as Record<string, unknown>;
+  };
+  const nodeMapping = parseJsonField(definition.node_mapping);
+  const edgeMapping = parseJsonField(definition.edge_mapping);
 
   const nodes = rawNodes.map(n => ({
     id:         n.id,
@@ -36,7 +41,7 @@ export async function buildGraph(topologyId: string): Promise<TopologyGraph | nu
     ipAddress:  n.ip_address ?? undefined,
     vendor:     n.vendor     ?? undefined,
     model:      n.model      ?? undefined,
-    properties: JSON.parse(n.properties) as Record<string, unknown>,
+    properties: parseJsonField(n.properties),
     posX:       n.pos_x      ?? undefined,
     posY:       n.pos_y      ?? undefined,
   }));
@@ -51,7 +56,7 @@ export async function buildGraph(topologyId: string): Promise<TopologyGraph | nu
     status:        l.status,
     bandwidthMbps: l.bandwidth_mbps  ?? undefined,
     utilizationPct: l.utilization_pct ?? undefined,
-    properties:    JSON.parse(l.properties) as Record<string, unknown>,
+    properties:    parseJsonField(l.properties),
   }));
 
   return {

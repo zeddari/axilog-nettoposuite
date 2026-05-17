@@ -6,6 +6,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { TopologyPage } from '@/pages/TopologyPage';
+import { TopologiesListPage } from '@/pages/TopologiesListPage';
 import { useAuthStore } from '@/store/authStore';
 import { Toaster } from 'sonner';
 
@@ -51,7 +52,7 @@ export default function App() {
           <Route element={<RequireAuth><AppShell /></RequireAuth>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard"   element={<DashboardPage />} />
-            <Route path="/topologies"  element={<TopologyPage />} />
+            <Route path="/topologies"     element={<TopologiesListPage />} />
             <Route path="/topologies/:id" element={<TopologyPage />} />
             {/* Placeholder routes — implement in later phases */}
             <Route path="/map"         element={<PlaceholderPage title="Geographic Map" />} />

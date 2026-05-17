@@ -6,7 +6,8 @@ export default async function alarmsRoutes(fastify: FastifyInstance) {
 
   // ── GET /api/v1/alarms ───────────────────────────────────────────────────────
   fastify.get('/api/v1/alarms', { preHandler: fastify.authenticate }, async (req, reply) => {
-    const { severity, topologyId } = req.query as Record<string, string>;
+    const { severity, topologyId, limit } = req.query as Record<string, string>;
+    const rowLimit = Math.min(Number(limit) || 200, 500);
 
     let qb = db
       .selectFrom('alarms')
@@ -17,7 +18,16 @@ export default async function alarmsRoutes(fastify: FastifyInstance) {
     if (severity)   qb = qb.where('severity', '=', severity as never);
     if (topologyId) qb = qb.where('topology_id', '=', topologyId);
 
-    const alarms = await qb.limit(200).execute();
+    const rows = await qb.limit(rowLimit).execute();
+    const alarms = rows.map(r => ({
+      id:         r.id,
+      severity:   r.severity,
+      title:      r.title,
+      source:     r.source,
+      topologyId: r.topology_id,
+      nodeId:     r.node_id,
+      createdAt:  r.created_at,
+    }));
     return reply.send({ data: alarms });
   });
 

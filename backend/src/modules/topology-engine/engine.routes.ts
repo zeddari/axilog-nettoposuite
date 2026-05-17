@@ -8,12 +8,23 @@ export default async function engineRoutes(fastify: FastifyInstance) {
 
   // ── GET /api/v1/topologies ───────────────────────────────────────────────────
   fastify.get('/api/v1/topologies', { preHandler: fastify.authenticate }, async (_req, reply) => {
-    const topologies = await db
+    const rows = await db
       .selectFrom('topology_definitions')
       .selectAll()
       .where('is_active', '=', 1)
       .orderBy('name', 'asc')
       .execute();
+
+    const topologies = rows.map(r => ({
+      id:                 r.id,
+      name:               r.name,
+      type:               r.type,
+      description:        r.description ?? undefined,
+      layoutAlgorithm:    r.layout_algorithm,
+      autoRefreshSeconds: r.auto_refresh_seconds,
+      isActive:           Boolean(r.is_active),
+      createdAt:          r.created_at,
+    }));
     return reply.send({ data: topologies });
   });
 

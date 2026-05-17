@@ -1,0 +1,59 @@
+/* ── Topology canvas overrides ─────────────────────────────────────────────── */
+
+/* Always-dark canvas background regardless of app theme */
+.topology-canvas-wrapper {
+  background: #0a0e14;
+}
+
+/* React Flow base pane */
+.topology-canvas-wrapper .react-flow__pane {
+  background: #0a0e14;
+}
+
+.topology-canvas-wrapper .react-flow__renderer {
+  background: #0a0e14;
+}
+
+/* Styled controls panel */
+.topology-canvas-wrapper .react-flow__controls {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.topology-canvas-wrapper .react-flow__controls-button {
+  background: #161b22;
+  border-color: #30363d;
+  color: #8b949e;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topology-canvas-wrapper .react-flow__controls-button:hover {
+  background: #21262d;
+  color: #e6edf3;
+}
+
+.topology-canvas-wrapper .react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+/* MiniMap */
+.topology-canvas-wrapper .react-flow__minimap {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #30363d !important;
+}
+
+/* Edge labels */
+.topology-canvas-wrapper .react-flow__edge-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  fill: #8b949e;
+}
+
+/* Hide default attribution */
+.topology-canvas-wrapper .react-flow__attribution {
+  display: none;
+}

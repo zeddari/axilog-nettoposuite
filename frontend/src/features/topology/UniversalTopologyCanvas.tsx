@@ -9,115 +9,111 @@ import ReactFlow, {
   BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import type { TopologyGraph, TopologyNode, TopologyLink } from '@/api/topology.api';
+import { NODE_TYPES_MAP } from './nodes/nodeRegistry';
+import { EDGE_TYPES } from './edges/TrafficEdge';
+import { NodeDetailPanel } from './NodeDetailPanel';
 
-// Status → node ring colour
-const STATUS_COLORS: Record<string, string> = {
-  UP:          '#22c55e',
-  DOWN:        '#ef4444',
-  DEGRADED:    '#f59e0b',
-  MAINTENANCE: '#3b82f6',
-  UNKNOWN:     '#6b7280',
-};
-
-// Map topology node → React Flow node
-function toRfNode(n: TopologyNode): Node {
+// ── Node builder ──────────────────────────────────────────────────────────────
+function toRfNode(n: TopologyNode, onNodeClick: (data: TopologyNode) => void): Node {
   return {
     id:       n.id,
-    type:     'default',
-    position: { x: n.posX ?? Math.random() * 600, y: n.posY ?? Math.random() * 400 },
+    type:     n.type in NODE_TYPES_MAP ? n.type : 'ROUTER',
+    position: { x: n.posX ?? Math.random() * 700, y: n.posY ?? Math.random() * 450 },
     data: {
-      label: (
-        <div className="flex flex-col items-center gap-1 px-2 py-1">
-          <span className="text-[11px] font-semibold text-white leading-none">{n.label}</span>
-          {n.ipAddress && (
-            <span className="text-[9px] text-gray-400 font-mono leading-none">{n.ipAddress}</span>
-          )}
-        </div>
-      ),
-    },
-    style: {
-      background:   '#21262d',
-      border:       `2px solid ${STATUS_COLORS[n.status] ?? '#6b7280'}`,
-      borderRadius: 8,
-      color:        '#e6edf3',
-      minWidth:     80,
-      fontSize:     11,
+      label:          n.label,
+      status:         n.status,
+      ipAddress:      n.ipAddress,
+      vendor:         n.vendor,
+      type:           n.type,
+      properties:     n.properties,
+      onClick:        () => onNodeClick(n),
     },
   };
 }
 
-// Map topology link → React Flow edge
+// ── Edge builder ──────────────────────────────────────────────────────────────
 function toRfEdge(l: TopologyLink): Edge {
-  const isActive   = l.status === 'UP';
-  const utilPct    = l.utilizationPct ?? 0;
-  const edgeColor  = l.status === 'DOWN' ? '#ef4444'
-    : utilPct > 80 ? '#f97316'
-    : utilPct > 50 ? '#f59e0b'
-    : '#22c55e';
-
   return {
     id:     l.id,
     source: l.sourceNodeId,
     target: l.targetNodeId,
-    label:  l.utilizationPct != null ? `${l.utilizationPct.toFixed(0)}%` : undefined,
-    type:   'smoothstep',
-    animated: isActive && utilPct > 10,  // animate when traffic flows
-    style: {
-      stroke:          edgeColor,
-      strokeWidth:     utilPct > 50 ? 3 : 2,
-      strokeDasharray: l.status === 'DOWN' ? '6 3' : undefined,
+    type:   'traffic',
+    data: {
+      status:         l.status,
+      utilizationPct: l.utilizationPct ?? 0,
+      bandwidthMbps:  l.bandwidthMbps,
     },
-    labelStyle: { fill: '#8b949e', fontSize: 10, fontFamily: 'Inter, sans-serif' },
-    labelBgStyle: { fill: '#21262d', fillOpacity: 0.8 },
   };
 }
 
-interface Props { graph: TopologyGraph; }
+// Stable reference — built once outside the component to avoid React Flow re-render loops
+const NODE_TYPE_MAP = { ...NODE_TYPES_MAP };
+
+interface Props { graph: TopologyGraph }
 
 export function UniversalTopologyCanvas({ graph }: Props) {
-  const initialNodes = useMemo(() => graph.nodes.map(toRfNode), [graph]);
+  const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
+
+  const handleNodeClick = useCallback((node: TopologyNode) => {
+    setSelectedNode(prev => prev?.id === node.id ? null : node);
+  }, []);
+
+  const initialNodes = useMemo(
+    () => graph.nodes.map(n => toRfNode(n, handleNodeClick)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [graph]
+  );
   const initialEdges = useMemo(() => graph.links.map(toRfEdge), [graph]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Sync when graph data changes (auto-refresh)
   useEffect(() => {
-    setNodes(graph.nodes.map(toRfNode));
+    setNodes(graph.nodes.map(n => toRfNode(n, handleNodeClick)));
     setEdges(graph.links.map(toRfEdge));
-  }, [graph, setNodes, setEdges]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph]);
 
   return (
-    <div className="topology-canvas-wrapper w-full h-full" style={{ minHeight: 400 }}>
+    <div className="topology-canvas-wrapper relative w-full h-full" style={{ minHeight: 480 }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        nodeTypes={NODE_TYPE_MAP}
+        edgeTypes={EDGE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.25 }}
         attributionPosition="bottom-right"
         proOptions={{ hideAttribution: true }}
+        onPaneClick={() => setSelectedNode(null)}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          color="#1c2333"
-          gap={20}
+          color="#1e2533"
+          gap={24}
           size={1}
         />
         <Controls className="react-flow__controls" />
         <MiniMap
-          nodeColor={node => {
-            const border = (node.style?.border as string | undefined) ?? '';
-            const match = border.match(/#[0-9a-fA-F]{6}/);
-            return match ? match[0] : '#6b7280';
-          }}
-          style={{ background: '#161b22', border: '1px solid #30363d' }}
-          maskColor="rgba(13,17,23,0.7)"
+          nodeColor={() => '#334155'}
+          style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: 8 }}
+          maskColor="rgba(13,17,23,0.75)"
+          zoomable
+          pannable
         />
       </ReactFlow>
+
+      {/* Node detail side panel */}
+      {selectedNode && (
+        <NodeDetailPanel
+          node={selectedNode}
+          onClose={() => setSelectedNode(null)}
+        />
+      )}
     </div>
   );
 }

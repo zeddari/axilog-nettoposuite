@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { topologyApi, type TopologyGraph } from '@/api/topology.api';
@@ -15,6 +15,19 @@ export function TopologyPage() {
   });
 
   const [selectedId, setSelectedId] = useState<string>(id ?? '');
+
+  // Sync if navigated to a specific topology URL
+  useEffect(() => {
+    if (id) setSelectedId(id);
+  }, [id]);
+
+  // Auto-select first topology if none selected yet
+  useEffect(() => {
+    if (!selectedId && definitions && definitions.length > 0) {
+      setSelectedId(definitions[0].id);
+    }
+  }, [selectedId, definitions]);
+
   const currentDef = definitions?.find(d => d.id === selectedId);
 
   const { data: graph, isLoading, refetch, dataUpdatedAt } = useQuery<TopologyGraph>({
