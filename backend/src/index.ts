@@ -1,4 +1,10 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Load .env from monorepo root (one level above backend/)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(__dirname, '../../.env') });
 import { buildApp } from './app.js';
 import { checkDbConnection } from './db/connection.js';
 

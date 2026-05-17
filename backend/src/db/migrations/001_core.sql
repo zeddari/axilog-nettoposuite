@@ -172,7 +172,7 @@ VALUES (
   'admin-seed-00000000-0000-0000-0001',
   'admin@axilog.local',
   'Axilog Admin',
-  '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdpPW2yYA9pAzO6',
+  '$2b$12$CU45EPW2609H7M5kd2PM3unlv6jPt8sZhCB.UPfDI2vpaRLf7457O',
   'admin',
   'local'
 );

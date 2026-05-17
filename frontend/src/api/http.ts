@@ -1,8 +1,10 @@
 import axios from 'axios';
 
+// baseURL is intentionally empty — all API paths include the full /api/v1/... prefix
+// In dev, Vite proxies /api/ → backend. In prod, Nginx proxies /api/ → backend.
 export const http = axios.create({
-  baseURL:        import.meta.env.VITE_API_URL ?? '/api/v1',
-  withCredentials: true,   // include HttpOnly JWT cookie
+  baseURL:         '',
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15_000,
 });

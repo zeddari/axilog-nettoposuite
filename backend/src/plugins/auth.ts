@@ -2,9 +2,17 @@ import fp from 'fastify-plugin';
 import jwt from '@fastify/jwt';
 import cookie from '@fastify/cookie';
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname, isAbsolute } from 'path';
+import { fileURLToPath } from 'url';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { JwtPayload, Role } from '../shared/types.js';
+
+// Resolve a key path: absolute → as-is; relative → from monorepo root (../../ from src/plugins/)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MONOREPO_ROOT = resolve(__dirname, '../../../');
+function resolveKeyPath(envPath: string): string {
+  return isAbsolute(envPath) ? envPath : resolve(MONOREPO_ROOT, envPath.replace(/^\.\.\//, ''));
+}
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -17,8 +25,8 @@ declare module 'fastify' {
 }
 
 export default fp(async (fastify: FastifyInstance) => {
-  const privateKey = readFileSync(resolve(process.env.JWT_PRIVATE_KEY_PATH ?? './certs/jwt.key'));
-  const publicKey  = readFileSync(resolve(process.env.JWT_PUBLIC_KEY_PATH  ?? './certs/jwt.key.pub'));
+  const privateKey = readFileSync(resolveKeyPath(process.env.JWT_PRIVATE_KEY_PATH ?? '../certs/jwt.key'));
+  const publicKey  = readFileSync(resolveKeyPath(process.env.JWT_PUBLIC_KEY_PATH  ?? '../certs/jwt.key.pub'));
 
   await fastify.register(cookie, { secret: process.env.COOKIE_SECRET ?? 'axilog-cookie-secret' });
 
