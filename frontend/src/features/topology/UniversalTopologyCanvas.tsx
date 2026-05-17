@@ -15,7 +15,8 @@ import { NODE_TYPES_MAP } from './nodes/nodeRegistry';
 import { EDGE_TYPES } from './edges/TrafficEdge';
 import { NodeDetailPanel } from './NodeDetailPanel';
 import { applyElkLayout } from './layout/elkLayout';
-import { LayoutGrid, ZapOff, Zap } from 'lucide-react';
+import { useTopologySocket } from '@/hooks/useTopologySocket';
+import { LayoutGrid, ZapOff, Zap, Wifi } from 'lucide-react';
 
 // ── Node builder ──────────────────────────────────────────────────────────────
 function toRfNode(n: TopologyNode, onNodeClick: (node: TopologyNode) => void): Node {
@@ -55,15 +56,17 @@ function toRfEdge(l: TopologyLink): Edge {
 const NODE_TYPE_MAP = { ...NODE_TYPES_MAP };
 
 interface Props {
-  graph:           TopologyGraph;
+  graph:            TopologyGraph;
   layoutAlgorithm?: string;
+  onRebuild?:       () => void;
 }
 
-export function UniversalTopologyCanvas({ graph, layoutAlgorithm = 'ELK_LAYERED' }: Props) {
+export function UniversalTopologyCanvas({ graph, layoutAlgorithm = 'ELK_LAYERED', onRebuild }: Props) {
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
   const [autoRefresh,  setAutoRefresh]  = useState(true);
   const [isLaying,     setIsLaying]     = useState(false);
   const rfInstance = useRef<{ fitView: () => void } | null>(null);
+  const [liveUpdates, setLiveUpdates]   = useState(0); // counter for the "live" badge
 
   const handleNodeClick = useCallback((node: TopologyNode) => {
     setSelectedNode(prev => prev?.id === node.id ? null : node);
@@ -85,6 +88,22 @@ export function UniversalTopologyCanvas({ graph, layoutAlgorithm = 'ELK_LAYERED'
     setEdges(rfEdges);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph]);
+
+  // ── Socket.IO real-time patching ─────────────────────────────────────────────
+  const { socket } = useTopologySocket({
+    topologyId: graph.topologyId,
+    setNodes,
+    setEdges,
+    onRebuild,
+  });
+
+  // Flash the "Live" badge on every socket event
+  useEffect(() => {
+    const bump = () => setLiveUpdates(n => n + 1);
+    socket.on('node:update', bump);
+    socket.on('link:update', bump);
+    return () => { socket.off('node:update', bump); socket.off('link:update', bump); };
+  }, [socket]);
 
   // ── ELK auto-layout ─────────────────────────────────────────────────────────
   const runLayout = useCallback(async () => {
@@ -180,6 +199,17 @@ export function UniversalTopologyCanvas({ graph, layoutAlgorithm = 'ELK_LAYERED'
           {autoRefresh ? <Zap className="w-3.5 h-3.5" /> : <ZapOff className="w-3.5 h-3.5" />}
           {autoRefresh ? 'Live' : 'Paused'}
         </button>
+
+        {/* Socket live badge */}
+        {socket.connected && (
+          <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg
+                          bg-[#21262d] border border-[#30363d] text-[10px] text-[#8b949e]">
+            <Wifi className="w-3 h-3 text-green-400" />
+            <span className="text-green-400 font-semibold">
+              {liveUpdates > 0 ? `${liveUpdates} updates` : 'Socket connected'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Node detail side panel */}

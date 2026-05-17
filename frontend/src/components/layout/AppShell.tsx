@@ -2,8 +2,12 @@ import { Outlet } from 'react-router-dom';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { AlarmBanner } from './AlarmBanner';
+import { useAlarmSocket } from '@/hooks/useAlarmSocket';
 
 export function AppShell() {
+  // Keep alarm WebSocket alive for the whole session
+  useAlarmSocket();
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-axilog-gray dark:bg-dark-base">
       {/* Fixed top bar */}

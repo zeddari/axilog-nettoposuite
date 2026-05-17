@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useSocketStatus } from '@/hooks/useSocketStatus';
 import {
   Network, Layers, Map, LayoutDashboard, Bell, Activity,
   Search, Radio, Server, BookOpen, Settings, GitBranch, Share2,
@@ -47,10 +48,24 @@ const menuCategories: NavCategory[] = [
   },
 ];
 
+const STATUS_DOT: Record<string, string> = {
+  connected:    'bg-green-500',
+  connecting:   'bg-yellow-400 animate-pulse',
+  disconnected: 'bg-gray-400',
+  error:        'bg-red-500',
+};
+const STATUS_LABEL: Record<string, string> = {
+  connected:    'Live',
+  connecting:   'Connecting…',
+  disconnected: 'Offline',
+  error:        'Error',
+};
+
 export function Sidebar() {
   const [collapsed, setCollapsed]    = useState(false);
   const [openCats,  setOpenCats]     = useState<Record<string, boolean>>({ network: true });
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const wsStatus = useSocketStatus();
 
   const toggleCat = (id: string) =>
     setOpenCats(prev => ({ ...prev, [id]: !prev[id] }));
@@ -136,6 +151,22 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* WebSocket status */}
+      <div className="px-3 py-2 border-t border-gray-100 dark:border-dark-border">
+        {collapsed ? (
+          <div className="flex justify-center">
+            <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[wsStatus]}`} title={`WebSocket: ${STATUS_LABEL[wsStatus]}`} />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[wsStatus]}`} />
+            <span className="text-[11px] text-gray-500 dark:text-dark-muted">
+              WebSocket: <span className="font-semibold">{STATUS_LABEL[wsStatus]}</span>
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* AI Assistant toggle */}
       <div className="border-t border-gray-100 dark:border-dark-border p-2">

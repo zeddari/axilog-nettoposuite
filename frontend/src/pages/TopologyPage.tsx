@@ -115,6 +115,7 @@ export function TopologyPage() {
           <UniversalTopologyCanvas
             graph={graph}
             layoutAlgorithm={currentDef?.layoutAlgorithm ?? 'ELK_LAYERED'}
+            onRebuild={() => void refetch()}
           />
         </div>
       ) : (
