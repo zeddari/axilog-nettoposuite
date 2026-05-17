@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS variables: Light mode (default) ─────────────────────────────────── */
+:root {
+  --bg-page:            #F5F5F5;
+  --bg-surface:         #ffffff;
+  --bg-elevated:        #f9fafb;
+  --bg-border:          #e5e7eb;
+  --text-primary:       #333333;
+  --text-secondary:     #6b7280;
+  --text-muted:         #9ca3af;
+
+  --brand-primary:      #4A154B;
+  --brand-primary-dark: #3B1139;
+  --brand-secondary:    #00B388;
+  --brand-secondary-dk: #009A74;
+
+  --scrollbar-thumb:    #4A154B;
+  --scrollbar-track:    #f1f1f1;
+}
+
+/* ── CSS variables: Dark mode ────────────────────────────────────────────── */
+.dark {
+  --bg-page:            #0d1117;
+  --bg-surface:         #161b22;
+  --bg-elevated:        #21262d;
+  --bg-border:          #30363d;
+  --text-primary:       #e6edf3;
+  --text-secondary:     #8b949e;
+  --text-muted:         #484f58;
+
+  --brand-primary:      #7C3AED;
+  --brand-primary-dark: #6D28D9;
+  --brand-secondary:    #00B388;
+  --brand-secondary-dk: #009A74;
+
+  --scrollbar-thumb:    #7C3AED;
+  --scrollbar-track:    #21262d;
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Scrollbar (Axilog brand colour) ─────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--brand-primary-dark); }
+
+/* ── Topology canvas — always dark regardless of app theme ──────────────── */
+.topology-canvas-wrapper            { background-color: #0a0e14 !important; }
+.react-flow__background             { background-color: #0a0e14; }
+.react-flow__minimap                { background-color: #161b22; border: 1px solid #30363d; }
+.react-flow__pane                   { cursor: grab; }
+.react-flow__pane.dragging          { cursor: grabbing; }
+
+/* ── Canvas controls — Axilog purple on hover ────────────────────────────── */
+.react-flow__controls-button {
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+.react-flow__controls-button:hover {
+  background: var(--brand-primary) !important;
+  color: #ffffff !important;
+}
+
+/* ── Traffic animation — animated SVG dash for active links ─────────────── */
+@keyframes flowDash {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0;   }
+}
+
+.link-traffic-animated {
+  animation: flowDash 1.5s linear infinite;
+  stroke-dasharray: 8 4;
+}
+
+/* ── Status ring around topology node icons ─────────────────────────────── */
+.node-status-ring {
+  stroke-width: 3;
+  fill: none;
+}
+.node-status-up          { stroke: #22c55e; }
+.node-status-down        { stroke: #ef4444; }
+.node-status-degraded    { stroke: #f59e0b; }
+.node-status-maintenance { stroke: #3b82f6; }
+.node-status-unknown     { stroke: #6b7280; }
+
+/* ── Alarm ribbon pulse ─────────────────────────────────────────────────── */
+@keyframes alarmPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+.alarm-critical-pulse { animation: alarmPulse 1.5s ease-in-out infinite; }

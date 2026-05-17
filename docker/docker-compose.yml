@@ -1,0 +1,106 @@
+version: '3.9'
+
+services:
+
+  # ── MySQL 8 ──────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.3
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${MYSQL_DATABASE:-topology}
+      MYSQL_USER:          ${MYSQL_USER:-topology_user}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ../backend/src/db/migrations/001_core.sql:/docker-entrypoint-initdb.d/02_schema.sql:ro
+    command: >
+      --innodb-buffer-pool-size=512M
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=caching_sha2_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Keycloak 25 (optional — enable with: docker compose --profile sso up) ───
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    restart: unless-stopped
+    command: start-dev --import-realm
+    profiles: ["sso"]
+    environment:
+      KEYCLOAK_ADMIN:          admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin}
+      KC_DB:                   mysql
+      KC_DB_URL:               jdbc:mysql://mysql:3306/keycloak
+      KC_DB_USERNAME:          ${MYSQL_USER:-topology_user}
+      KC_DB_PASSWORD:          ${MYSQL_PASSWORD}
+      KC_HOSTNAME:             ${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+    volumes:
+      - ../keycloak/realm-axilog.json:/opt/keycloak/data/import/realm.json:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ── Backend (Fastify API) ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    env_file: ../.env
+    ports:
+      - "3001:3001"
+      - "162:162/udp"    # SNMP trap listener
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── MCP Server ────────────────────────────────────────────────────────────────
+  mcp-server:
+    build:
+      context: ../mcp-server
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      API_URL:       http://backend:3001
+      MCP_TRANSPORT: sse
+    ports:
+      - "3002:3002"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ── Frontend (Nginx static) ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

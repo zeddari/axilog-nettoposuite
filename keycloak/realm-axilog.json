@@ -1,0 +1,82 @@
+{
+  "realm": "axilog",
+  "enabled": true,
+  "displayName": "Axilog NetTopoSuite",
+  "loginTheme": "keycloak",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "ssoSessionIdleTimeout": 3600,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      { "name": "admin",           "description": "Full platform access" },
+      { "name": "operator",        "description": "Read/write topology, acknowledge alarms, trigger discovery" },
+      { "name": "service_manager", "description": "Full catalogue access, read-only topology" },
+      { "name": "viewer",          "description": "Read-only access to all views" }
+    ]
+  },
+  "groups": [
+    {
+      "name": "noc-team",
+      "realmRoles": ["operator"]
+    },
+    {
+      "name": "management",
+      "realmRoles": ["admin"]
+    },
+    {
+      "name": "service-team",
+      "realmRoles": ["service_manager"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "axilog-backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["${APP_URL}/api/v1/auth/keycloak/callback"],
+      "webOrigins": ["${APP_URL}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "axilog-admin",
+      "email": "admin@axilog.local",
+      "firstName": "Axilog",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "Admin@Axilog123", "temporary": true }
+      ],
+      "realmRoles": ["admin"],
+      "groups": ["/management"]
+    }
+  ]
+}
