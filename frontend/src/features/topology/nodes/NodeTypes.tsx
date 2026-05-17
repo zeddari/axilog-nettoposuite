@@ -109,7 +109,10 @@ function BaseNode({ data, icon, shape = 'rounded' }: {
         ) : (
           <>
             {resolvedIcon}
-            <span className="text-[10px] font-bold text-white/90 text-center leading-tight px-1 truncate max-w-[72px]">
+            <span
+              className="text-[10px] font-bold text-white/90 text-center leading-tight px-1 truncate max-w-[84px]"
+              title={data.label}
+            >
               {data.label}
             </span>
           </>
@@ -118,7 +121,10 @@ function BaseNode({ data, icon, shape = 'rounded' }: {
 
       {/* Label below for diamond shape */}
       {shape === 'diamond' && (
-        <span className="mt-1 text-[10px] font-bold text-white/90 text-center leading-tight max-w-[80px] truncate">
+        <span
+          className="mt-1 text-[10px] font-bold text-white/90 text-center leading-tight max-w-[90px] truncate"
+          title={data.label}
+        >
           {data.label}
         </span>
       )}

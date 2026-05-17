@@ -29,9 +29,9 @@ interface Props {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   if (!value) return null;
   return (
-    <div className="flex items-start justify-between py-2.5 border-b border-gray-50 dark:border-dark-border last:border-0">
-      <span className="text-xs text-gray-500 dark:text-dark-muted font-medium min-w-[90px]">{label}</span>
-      <span className="text-xs text-gray-800 dark:text-dark-text font-semibold text-right ml-2 break-all">{value}</span>
+    <div className="py-2.5 border-b border-[#30363d] last:border-0">
+      <span className="block text-[10px] text-[#8b949e] font-medium uppercase tracking-wide mb-0.5">{label}</span>
+      <span className="block text-xs text-[#e6edf3] font-semibold break-words leading-snug">{value}</span>
     </div>
   );
 }
@@ -79,7 +79,7 @@ export function NodeDetailPanel({ node, onClose, onIconChanged }: Props) {
 
   return (
     <>
-      <div className="absolute right-3 top-3 bottom-3 w-72 z-10
+      <div className="absolute right-3 top-3 bottom-3 w-80 z-10
                       bg-[#161b22] border border-[#30363d] rounded-xl shadow-2xl
                       flex flex-col overflow-hidden"
            style={{ backdropFilter: 'blur(8px)' }}>
@@ -100,37 +100,45 @@ export function NodeDetailPanel({ node, onClose, onIconChanged }: Props) {
         </div>
 
         {/* Status banner */}
-        <div className={`mx-3 mt-3 px-3 py-2 rounded-lg border flex items-center gap-2 ${STATUS_BG[status]}`}>
+        <div className="mx-3 mt-3 mb-1 px-3 py-2 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center gap-2">
           <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-            status === 'UP' ? 'bg-green-500' : status === 'DOWN' ? 'bg-red-500' :
-            status === 'DEGRADED' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'
+            status === 'UP'          ? 'bg-green-500'
+            : status === 'DOWN'     ? 'bg-red-500'
+            : status === 'DEGRADED' ? 'bg-yellow-500 animate-pulse'
+            : status === 'MAINTENANCE' ? 'bg-blue-500'
+            : 'bg-gray-400'
           }`} />
-          <span className={`text-xs font-bold ${STATUS_COLOR[status]}`}>{status}</span>
-          <span className="text-xs text-gray-500 dark:text-[#8b949e] ml-auto">{node.type}</span>
+          <span className={`text-xs font-bold flex-shrink-0 ${STATUS_COLOR[status]}`}>{status}</span>
+          <span className="ml-auto text-[10px] font-mono text-[#8b949e] truncate">{node.type}</span>
         </div>
 
         {/* Scrollable details */}
-        <div className="flex-1 overflow-y-auto px-4 py-2">
-          <div className="mb-1">
-            <p className="text-[10px] text-[#8b949e] uppercase tracking-wider font-semibold mb-1 pt-2">Identity</p>
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+
+          {/* Section: Identity */}
+          <p className="text-[10px] text-[#8b949e] uppercase tracking-wider font-semibold mb-2">Identity</p>
+          <div className="mb-4">
             <Row label="IP Address" value={node.ipAddress && <span className="font-mono">{node.ipAddress}</span>} />
-            <Row label="Vendor"   value={node.vendor} />
-            <Row label="Model"    value={node.model} />
-            <Row label="Node ID"  value={<span className="font-mono text-[9px]">{node.id}</span>} />
+            <Row label="Vendor"     value={node.vendor} />
+            <Row label="Model"      value={node.model} />
+            <Row label="Node ID"    value={<span className="font-mono text-[9px] break-all">{node.id}</span>} />
           </div>
 
+          {/* Section: Properties */}
           {Object.keys(props).length > 0 && (
-            <div className="mb-1">
-              <p className="text-[10px] text-[#8b949e] uppercase tracking-wider font-semibold mb-1 pt-2">Properties</p>
-              {Object.entries(props).map(([k, v]) => (
-                <Row key={k} label={k} value={String(v)} />
-              ))}
-            </div>
+            <>
+              <p className="text-[10px] text-[#8b949e] uppercase tracking-wider font-semibold mb-2">Properties</p>
+              <div className="mb-4">
+                {Object.entries(props).map(([k, v]) => (
+                  <Row key={k} label={k} value={String(v)} />
+                ))}
+              </div>
+            </>
           )}
 
-          {/* Icon section */}
+          {/* Section: Icon */}
           {canEdit() && (
-            <div className="pt-3">
+            <div>
               <p className="text-[10px] text-[#8b949e] uppercase tracking-wider font-semibold mb-2">Icon</p>
               <div className="flex items-center justify-between">
                 {activeIconKey
